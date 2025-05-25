@@ -2,7 +2,12 @@
 
 ## introduce
 
-Only once click, automatically activated
+**Only once click, automatically activated**
+
+- Click the ide card to automatically inject ja-netfilter and activation key, and restart the IDE to see that it has been activated.
+- Click the plugin or ide cards to copy the activation key to the clipboard, and you can manually enter the key for activation
+- It also supports one-click removal of activation configuration
+- It is single bin file, after execution, the relevant files for activation will be released in the current directory. After activation, the ide will reference the directory and do not delete it.
 
 ## dev
 
@@ -40,6 +45,6 @@ windows use powershell run:
 .\build.ps1
 ```
 
-## Stargazers over time
+## Star History
 
 [![Stargazers over time](https://starchart.cc/saxpjexck/lsix.svg?variant=adaptive)](https://starchart.cc/saxpjexck/lsix)
