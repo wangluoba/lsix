@@ -6,6 +6,7 @@
     <link href="static/css/common.css" rel="stylesheet" type="text/css" />
     <link href="static/css/index.css" rel="stylesheet" type="text/css" />
     <link href="static/css/custom.css" rel="stylesheet" type="text/css" />
+    <link href="static/css/checkenv.css" rel="stylesheet" type="text/css" />
     <script src="static/js/handler.js"></script>
     <script src="static/js/languages.js"></script>
     <title>{{.title}}</title>
@@ -137,6 +138,68 @@
             }
           </style>
         </header>
+
+        <!-- Environmental monitoring frame -->
+        {{if or .checkenv.HasVars (not .checkenv.EnglishPath)}}
+        <div class="checkenv-backdrop"></div>
+        <div class="checkenv-container">
+          <div class="warning">
+            {{if not .checkenv.EnglishPath}}
+            <h1>❌Error Path</h1>
+            <p>Activation may fail if the installation path includes non-English characters. Please use a directory with only English letters.</p>
+            <p>The current path: {{.checkenv.Path}}</p>
+            {{end}} {{if .checkenv.HasVars}}
+            <h1>🚨 *_VM_OPTIONS Environment Variables Detected</h1>
+            <p>1.These environment variables are typically used to specify the path to a custom <code>.vmoptions</code> file for the IDE. They were not created by this tool or by IntelliJ IDEA itself, but were likely added by a previous activation script you used.</p>
+            <p>2.These variables may interfere with the IDE’s normal operation or cause activation to fail.</p>
+            <b>3.Normally you don't need to delete the variables, the tool will work fine. If activation fails, follow the instructions to remove the variables.</b>
+            <p>4.If you still have the uninstallation script from that activation method, please run it to remove these variables.</p>
+            <p>5.If the script is unavailable, you can remove them manually as shown below.</p>
+            <div class="variables-container">
+              {{range $key, $val := .checkenv.Variables}}
+              <div class="variable"><strong>{{$key}}</strong> = {{$val}}</div>
+              {{end}}
+            </div>
+            <h1>How to clean up *_VM_OPTIONS environment variables</h1>
+            <li><strong>Windows:</strong> Press <kbd>Win + R</kbd>, open <b>PowerShell</b>, and run the following:</li>
+            <p><strong>View environment variables:</strong></p>
+            <div class="variable">
+              Get-ChildItem Env: |findstr vm
+              <button class="copy-button" onclick="copyToClipboard(this)"> Copy </button>
+            </div>
+            <p><strong>Remove environment variables:</strong></p>
+            <div class="variable">
+              irm http://127.0.0.1:8123/static/uninstall-scripts/clean_vm_options.ps1 | iex
+              <button class="copy-button" onclick="copyToClipboard(this)"> Copy </button>
+            </div>
+
+            <p>If PowerShell is not available, download and run the following script:</p>
+              <a href="http://127.0.0.1:8123/static/uninstall-scripts/uninstall.vbs" download>uninstall.vbs</a>
+            </p>
+            <li><strong>Linux or macOS:</strong> Open the terminal and paste the following:</li>
+            <p><strong>View environment variables:</strong></p>
+            <div class="variable">
+              env |grep -i vm
+              <button class="copy-button" onclick="copyToClipboard(this)"> Copy </button>
+            </div>           
+            <p><strong>Remove environment variables:</strong></p>
+            <div class="variable">
+              curl -fsSL http://127.0.0.1:8123/static/uninstall-scripts/uninstall.sh | bash
+              <button class="copy-button" onclick="copyToClipboard(this)"> Copy </button>
+            </div>
+
+            <p><b>Important:</b> Close your terminal and IDE before retrying — environment variables may be cached.</p>
+            <p><b>Note for Linux/macOS:</b> The script covers common paths but may not be exhaustive. Please manually check and adjust as needed.</p>
+
+            {{end}}
+
+            <button class="closecheckenv" onclick="closecheckenv(this)">
+              close
+            </button>
+          </div>
+        </div>
+        {{end}}
+
         <div class="wt-container wt-offset-top-96">
           <div class="wt-offset-top-48">
             <h2

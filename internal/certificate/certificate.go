@@ -21,10 +21,11 @@ import (
 var (
 	forceDelete          bool
 	binDir               = util.GetBinDir()
-	certPath             = filepath.Join(binDir, "jetbra.pem")
-	keyPath              = filepath.Join(binDir, "jetbra.key")
-	powerPath            = filepath.Join(binDir, "power.txt")
-	jaNetfilterpowerConf = filepath.Join(binDir, "static", "ja-netfilter", "config-jetbrains", "power.conf")
+	certPath             = filepath.Join(binDir, ".jetbra-free", "jetbra.pem")
+	keyPath              = filepath.Join(binDir, ".jetbra-free", "jetbra.key")
+	powerPath            = filepath.Join(binDir, ".jetbra-free", "power.txt")
+	jaNetfilterpowerConf = filepath.Join(binDir, ".jetbra-free", "static", "ja-netfilter", "config-jetbrains", "power.conf")
+	rootCertificate      = filepath.Join(binDir, ".jetbra-free", "static", "root_certificate.pem")
 )
 
 func init() {
@@ -245,7 +246,7 @@ func generateEqualResult() (string, error) {
 	x := extractSignature(jetbraCertificate)
 	y := extractPublicKeyExponent(jetbraCertificate)
 
-	rootCertificate, err := loadCertificate(filepath.Join(binDir, "static", "root_certificate.pem"))
+	rootCertificate, err := loadCertificate(rootCertificate)
 	if err != nil {
 		return "", err
 	}

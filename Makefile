@@ -3,7 +3,7 @@ BINARY_NAME=jetbra-free
 BIN_DIR=./bin
 EMBED_FILE=internal/util/bindata.go
 GO_BINDATA=go-bindata
-SRC_DIRS=static/... templates/...
+SRC_DIRS=static/... templates/... cache/...
 
 all: build
 

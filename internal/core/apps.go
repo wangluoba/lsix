@@ -1,6 +1,7 @@
 package core
 
 import (
+	"jetbra-free/internal/util"
 	"net/http"
 	"path"
 	"time"
@@ -23,6 +24,18 @@ func Index(c *gin.Context) {
 		{Name: "CLion", Code: "CL,PCWMP,PSI", Icon: path.Join("static", "icons", "CLion_icon.svg"), IsFree: true, Describe: "IDE for C and C++ developers", Tags: []string{"C", "C++", "CMake"}, CrackStatus: GetCrackStatus("CLion")},
 		{Name: "RustRover", Code: "RR,PCWMP,PSI", Icon: path.Join("static", "icons", "RustRover_icon.svg"), IsFree: true, Describe: "IDE for Rust developers", Tags: []string{"Rust", "SQL", "JavaScript"}, CrackStatus: GetCrackStatus("RustRover")},
 		{Name: "WebStorm", Code: "WS,PCWMP,PSI", Icon: path.Join("static", "icons", "WebStorm_icon.svg"), IsFree: true, Describe: "IDE for JavaScript and TypeScript developers", Tags: []string{"JavaScript", "TypeScript", "React"}, CrackStatus: GetCrackStatus("WebStorm")},
+		// 	{Name: "AppCode", Code: "AC,PCWMP,PSI", Icon: filepath.Join("static", "icons", "AppCode_icon.svg")},
+		// 	{Name: "dotCover", Code: "DC", Icon: filepath.Join("static", "icons", "dotCover_icon.svg")},
+		// 	{Name: "dotTrace", Code: "DPN", Icon: filepath.Join("static", "icons", "dotTrace_icon.svg")},
+		// 	{Name: "dotMemory", Code: "DM", Icon: filepath.Join("static", "icons", "dotMemory_icon.svg")},
+		// 	{Name: "Aqua", Code: "AQ", Icon: filepath.Join("static", "icons", "Aaqua_icon.svg")},
+		//
+		// DEVECOSTUDIO_VM_OPTIONS
+		// GATEWAY_VM_OPTIONS
+		// JETBRAINS_CLIENT_VM_OPTIONS
+		// JETBRAINSCLIENT_VM_OPTIONS
+		// STUDIO_VM_OPTIONS Android studio
+		// WEBIDE_VM_OPTIONS
 	}
 
 	c.HTML(http.StatusOK, "/index.html", gin.H{
@@ -33,5 +46,6 @@ func Index(c *gin.Context) {
 		"apps":         apps,
 		"plugins":      AllPluginList,
 		"jaNetfilter":  jaNetfilter,
+		"checkenv":     util.GetVMOptionsVars(),
 	})
 }

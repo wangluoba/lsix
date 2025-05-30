@@ -17,7 +17,7 @@ install go-bindata
 go install github.com/go-bindata/go-bindata/v3/go-bindata@latest
 export PATH=$PATH:$(go env GOPATH)/bin
 go-bindata --version
-go-bindata -o internal/util/access.go -pkg util static/... templates/...
+go-bindata -o internal/util/access.go -pkg util static/... templates/...  cache/...
 go run cmd/main.go
 ```
 

@@ -37,10 +37,20 @@ func cors() gin.HandlerFunc {
 }
 
 func init() {
-	binDir, _ := os.Executable()
-	binDir = filepath.Dir(binDir)
+	binPath, err := os.Executable()
+	if err != nil {
+		log.Fatalf("Failed to get executable path: %v", err)
+	}
+	binDir := filepath.Dir(binPath)
+	resourceDir := filepath.Join(binDir, ".jetbra-free")
 
-	err := util.ExtractAssets(binDir)
+	err = os.MkdirAll(resourceDir, 0755)
+
+	if err != nil {
+		log.Fatalf("Failed to create resource directory: %v", err)
+	}
+
+	err = util.ExtractAssets(resourceDir)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to extract assets: %v", err))
 	}
@@ -64,10 +74,13 @@ func main() {
 
 	binDir, _ := os.Executable()
 	binDir = filepath.Dir(binDir)
-	r.Static("/static", filepath.Join(binDir, "static"))
+	r.Static("/static", filepath.Join(binDir, ".jetbra-free", "static"))
 
-	r.LoadHTMLGlob(filepath.Join(binDir, "templates/*"))
+	r.LoadHTMLGlob(filepath.Join(binDir, ".jetbra-free", "templates/*"))
 
+	r.GET("/favicon.ico", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "https://www.jetbrains.com/favicon.ico")
+	})
 	r.GET("/", core.Index)
 	r.POST("/generateLicense", core.GenerateLicenseHandler)
 	r.POST("/crack", core.CrackHandler)

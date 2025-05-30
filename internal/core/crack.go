@@ -21,7 +21,7 @@ var (
 	agentLine = "-javaagent:" + jaNetfilter + "=jetbrains"
 )
 
-func setUserConfigPath() string {
+func setUserDataPath() string {
 	switch runtime.GOOS {
 	case "windows":
 		return filepath.Join(os.Getenv("APPDATA"), "JetBrains")
@@ -32,12 +32,219 @@ func setUserConfigPath() string {
 	}
 }
 
+func getDefaultVmoptionsFilename(app string, osName string) string {
+	appNorm := strings.ToLower(app)
+	if appNorm == "intellij idea" {
+		appNorm = "idea"
+	}
+	switch osName {
+	case "windows":
+		return appNorm + "64.exe.vmoptions"
+	default:
+		return appNorm + ".vmoptions"
+	}
+}
+
 type CrackRequest struct {
 	App     string  `json:"app"`
 	Status  string  `json:"status"`
 	License License `json:"license"`
 }
 
+func GetCrackStatus(app string) string {
+
+	var vmoptionsFiles []string
+	jetBrainsPath := setUserDataPath()
+	jetBrainsPathDirs, err := os.ReadDir(jetBrainsPath)
+	if err != nil {
+		log.Printf("❌ Failed to read directory: %v", err)
+	}
+	envKey := strings.ToUpper(app) + "_VM_OPTIONS"
+	if envKey == "IntelliJ IDEA_VM_OPTIONS" {
+		envKey = "IDEA_VM_OPTIONS"
+	}
+
+	cracked := true
+	found := false
+
+	// 遍历配置目录，收集所有版本目录下的 *.vmoptions 文件
+	for _, dir := range jetBrainsPathDirs {
+		if !dir.IsDir() {
+			continue
+		}
+
+		if !strings.HasPrefix(dir.Name(), appPathPrefixName(app)) {
+			continue
+		}
+		found = true
+		appPath := filepath.Join(jetBrainsPath, dir.Name())
+		foundFiles, _ := filepath.Glob(filepath.Join(appPath, "*.vmoptions"))
+
+		// 如果没有找到任何 vmoptions 文件，则标记为未破解
+		if len(foundFiles) == 0 {
+			cracked = false
+			log.Printf("🔒 %s: UnCracked (no vmoptions found) 📂 %s\n", app, appPath)
+			continue
+		}
+		vmoptionsFiles = append(vmoptionsFiles, foundFiles...)
+
+	}
+
+	if found {
+		envPath := os.Getenv(envKey)
+		if envPath != "" {
+			if os.Getenv("DEBUG") == "1" {
+				log.Printf("🧩 Found env: %s=%s", envKey, envPath)
+			}
+			if _, err := os.Stat(envPath); err == nil {
+				vmoptionsFiles = append(vmoptionsFiles, envPath)
+			}
+		}
+	}
+	// 遍历发现的不同版本号目录下的*.vmoptions
+	for _, file := range vmoptionsFiles {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			cracked = false
+			continue
+		}
+		content := string(data)
+		lines := strings.Split(content, "\n")
+		hasAddOpens1 := false
+		hasAddOpens2 := false
+		hasAgentLine := false
+		for _, line := range lines {
+			trim := strings.TrimSpace(line)
+			if trim == addOpens1 {
+				hasAddOpens1 = true
+			}
+			if trim == addOpens2 {
+				hasAddOpens2 = true
+			}
+			if trim == agentLine {
+				hasAgentLine = true
+			}
+		}
+		if !(hasAddOpens1 && hasAddOpens2 && hasAgentLine) {
+			cracked = false
+			log.Printf("🔒 %s Current Status: UnCracked 📄 %s\n", app, file)
+		} else {
+			log.Printf("🎉 %s Current Status: Cracked 📄 %s\n", app, file)
+		}
+	}
+	if !found {
+		log.Printf("ℹ️  %s: Uninstall \n", app)
+		return "Uninstall"
+	}
+	if cracked {
+		return "Cracked"
+	}
+	return "UnCracked"
+}
+
+func getVmoptionsFiles(app string) []string {
+
+	var vmoptionsFiles []string
+	jetBrainsPath := setUserDataPath()
+	jetBrainsPathDirs, err := os.ReadDir(jetBrainsPath)
+	if err != nil {
+		log.Printf("❌ Failed to read directory: %v", err)
+	}
+	envKey := strings.ToUpper(app) + "_VM_OPTIONS"
+	if envKey == "IntelliJ IDEA_VM_OPTIONS" {
+		envKey = "IDEA_VM_OPTIONS"
+	}
+	envPath := os.Getenv(envKey)
+	if envPath != "" {
+		if os.Getenv("DEBUG") == "1" {
+			log.Printf("🧩 Found env: %s=%s", envKey, envPath)
+		}
+		if _, err := os.Stat(envPath); err == nil {
+			vmoptionsFiles = append(vmoptionsFiles, envPath)
+		}
+	}
+	for _, dir := range jetBrainsPathDirs {
+		if !dir.IsDir() {
+			continue
+		}
+		if !strings.HasPrefix(dir.Name(), appPathPrefixName(app)) {
+			continue
+		}
+		appPath := filepath.Join(jetBrainsPath, dir.Name())
+		foundFiles, _ := filepath.Glob(filepath.Join(appPath, "*.vmoptions"))
+		if len(foundFiles) == 0 {
+			defaultFilePath := filepath.Join(appPath, getDefaultVmoptionsFilename(app, runtime.GOOS))
+			log.Printf("📂 No .vmoptions files found in path:%s. Create vmoptions file path: %s", appPath, defaultFilePath)
+			err := os.WriteFile(defaultFilePath, []byte(""), 0644)
+			if err != nil {
+				log.Printf("❌ Failed to create default vmoptions file: %v", err)
+			} else {
+				vmoptionsFiles = append(vmoptionsFiles, defaultFilePath)
+				if os.Getenv("DEBUG") == "1" {
+					log.Printf("📂 Found1 %d .vmoptions files: %v", len(foundFiles), foundFiles)
+					log.Printf("📂 Found1v %d .vmoptions files: %v", len(vmoptionsFiles), vmoptionsFiles)
+				}
+
+			}
+		} else {
+			vmoptionsFiles = append(vmoptionsFiles, foundFiles...)
+			if os.Getenv("DEBUG") == "1" {
+				log.Printf("📂 Found2 %d .vmoptions files: %v", len(foundFiles), foundFiles)
+				log.Printf("📂 Found2v %d .vmoptions files: %v", len(vmoptionsFiles), vmoptionsFiles)
+			}
+		}
+
+	}
+	if os.Getenv("DEBUG") == "1" {
+		log.Printf("📂 SUM Found %d .vmoptions files: %v", len(vmoptionsFiles), vmoptionsFiles)
+	}
+	return vmoptionsFiles
+}
+
+func getKeyFiles(app string) []string {
+
+	var keyFiles []string
+	envKey := strings.ToUpper(app) + "_VM_OPTIONS"
+	if envKey == "IntelliJ IDEA_VM_OPTIONS" {
+		envKey = "IDEA_VM_OPTIONS"
+	}
+	jetBrainsPath := setUserDataPath()
+	jetBrainsPathDirs, err := os.ReadDir(jetBrainsPath)
+	if err != nil {
+		log.Printf("❌ Failed to read directory: %v", err)
+	}
+
+	for _, dir := range jetBrainsPathDirs {
+		if !dir.IsDir() {
+			continue
+		}
+		if !strings.HasPrefix(dir.Name(), appPathPrefixName(app)) {
+			continue
+		}
+		appPath := filepath.Join(jetBrainsPath, dir.Name())
+		// keyfile
+		keyFile := filepath.Join(appPath, strings.ToLower(appNormName(app))+".key")
+		keyFiles = append(keyFiles, keyFile)
+	}
+	if os.Getenv("DEBUG") == "1" {
+		log.Printf("📂 SUM Found %d key files: %v", len(keyFiles), keyFiles)
+	}
+	return keyFiles
+}
+func appPathPrefixName(app string) string {
+	appPathPrefixName := app
+	if appPathPrefixName == "IntelliJ IDEA" {
+		appPathPrefixName = "IntelliJIdea"
+	}
+	return appPathPrefixName
+}
+func appNormName(app string) string {
+	appNormName := app
+	if appNormName == "IntelliJ IDEA" {
+		appNormName = "idea"
+	}
+	return appNormName
+}
 func CrackHandler(c *gin.Context) {
 	var req CrackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -45,101 +252,84 @@ func CrackHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
 	app := req.App
-	status := req.Status
-	log.Printf("🚀 Start processing the request: app=%s, status=%s", app, status)
 	action := ""
-	if app == "IntelliJ IDEA" {
-		app = "IntelliJIdea"
-	}
-	currentStatus := GetCrackStatus(app)
+	status := req.Status
 
-	path := setUserConfigPath()
+	log.Printf("🚀 Start processing the request: app=%s, status=%s", app, status)
 
-	dirs, err := os.ReadDir(path)
-	if err != nil {
-		log.Printf("❌ Failed to read directory: %v", err)
-		c.JSON(500, gin.H{
-			"error":  "Failed to read directory",
-			"detail": err.Error(),
-		})
-		return
-	}
-	backup := false
+	log.Printf("🚀 GetCrackStatus Start...")
+	currentStatus := GetCrackStatus(appPathPrefixName(app))
+	log.Printf("🚀 Start %s %s...", app, status)
+
+	vmoptionsFiles := getVmoptionsFiles(app)
+	keyFiles := getKeyFiles(app)
+
+	found := false
 	setkey := false
-	for _, dir := range dirs {
-		if !dir.IsDir() {
-			continue
-		}
-		if !strings.HasPrefix(dir.Name(), app) {
-			continue
-		}
-		dirPath := filepath.Join(path, dir.Name())
-		// vmoptionsFiles
-		vmoptionsFiles, _ := filepath.Glob(filepath.Join(dirPath, "*.vmoptions"))
-		// keyfile
-		keyfile := filepath.Join(dirPath, strings.ToLower(app)+".key")
-		if strings.HasSuffix(keyfile, "intellijidea.key") {
-			keyfile = filepath.Join(dirPath, "idea.key")
-		}
-
-		if status == "Cracked" {
-
+	backup := false
+	if status == "Cracked" {
+		if currentStatus == "UnCracked" {
 			for _, file := range vmoptionsFiles {
+				found = true
 				backupPath := file + ".jetbra-free.bak"
-				if currentStatus == "UnCracked" {
-					data, err := os.ReadFile(file)
-					if err == nil {
-						log.Printf("📦 Backup vmoptions: %s", backupPath)
-						_ = os.WriteFile(backupPath, data, 0644)
-					}
-					err = editVmoptionsFile(file)
-					if err != nil {
-						fmt.Printf("Failed to patch %s: %v\n", file, err)
-					}
-					backup = true
+				data, err := os.ReadFile(file)
+				if err == nil {
+					log.Printf("📦 Backup vmoptions: %s", backupPath)
+					_ = os.WriteFile(backupPath, data, 0644)
 				}
-
+				err = editVmoptionsFile(file)
+				if err != nil {
+					fmt.Printf("Failed to patch %s: %v\n", file, err)
+				}
 			}
-
-			licenseStr, _ := GenerateLicense(&req.License)
-
-			if currentStatus == "UnCracked" {
-				keyBackupPath := keyfile + ".jetbra-free.bak"
-				data, err := os.ReadFile(keyfile)
+			// 备份keyfile
+			for _, file := range keyFiles {
+				keyBackupPath := file + ".jetbra-free.bak"
+				data, err := os.ReadFile(file)
 				if err == nil {
 					_ = os.WriteFile(keyBackupPath, data, 0644)
 					log.Printf("🔑 Backup key: %s", keyBackupPath)
 				}
 			}
-
-			if err := setKeyFile(keyfile, licenseStr); err != nil {
+			backup = true
+		}
+		// 设置key
+		licenseStr, _ := GenerateLicense(&req.License)
+		for _, file := range keyFiles {
+			if err := setKeyFile(file, licenseStr); err != nil {
 				log.Printf("❌ Failed to set key file: %v", err)
 			}
-			setkey = true
-			if setkey && !backup {
-				action = "CrackedWithoutBackup"
-			} else {
-				action = "Cracked"
-			}
+		}
+		setkey = true
 
-		} else if status == "UnCracked" {
-			for _, file := range vmoptionsFiles {
-				if err := revertVmoptionsFile(file); err != nil {
-					log.Printf("❌ Restore failed: %v", err)
-				}
-			}
+		if setkey && !backup {
+			action = "CrackedWithoutBackup"
+		} else {
+			action = "Cracked"
+		}
 
-			if err := revertKeyFile(keyfile); err != nil {
+	} else if status == "UnCracked" {
+		for _, file := range vmoptionsFiles {
+			found = true
+			if err := revertVmoptionsFile(file); err != nil {
+				log.Printf("❌ Restore failed: %v", err)
+			}
+		}
+		for _, file := range keyFiles {
+			if err := revertKeyFile(file); err != nil {
 				log.Printf("❌ Failed to restore key file: %v", err)
 			}
-			action = "UnCracked"
 		}
+		action = "UnCracked"
 	}
 
-	if action != "" {
+	if action != "" && found {
 		c.JSON(200, gin.H{"msg": action})
+		return
+	}
+	if !found {
+		c.JSON(200, gin.H{"msg": "Uninstall"})
 		return
 	}
 	c.JSON(200, gin.H{"msg": "ERROR"})
@@ -153,8 +343,29 @@ func setKeyFile(keyPath string, licenseStr string) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("🔑 Write key: %s", keyPath)
-	return os.WriteFile(keyPath, []byte(utf16Content), 0644)
+	dir := filepath.Dir(keyPath)
+	tmpFile, err := os.CreateTemp(dir, "keyfile-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmpFile.Name()
+
+	// 写入内容
+	if _, err := tmpFile.Write([]byte(utf16Content)); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpPath)
+		return err
+	}
+	tmpFile.Close()
+
+	log.Printf("🔑 Replacing key file atomically: %s", keyPath)
+
+	// 原子性替换
+	if err := os.Rename(tmpPath, keyPath); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+	return nil
 }
 
 func revertKeyFile(keyPath string) error {
@@ -176,7 +387,6 @@ func revertKeyFile(keyPath string) error {
 }
 
 func editVmoptionsFile(path string) error {
-
 	file, err := os.Open(path)
 	if err != nil {
 		return err
@@ -205,11 +415,14 @@ func editVmoptionsFile(path string) error {
 			continue
 		}
 		lines = append(lines, line)
-
 	}
 	if err := scanner.Err(); err != nil {
 		return err
 	}
+
+	// ⚠️ 提前关闭 file，否则 Windows 下 rename 会失败
+	file.Close()
+
 	if !hasAddOpens1 {
 		lines = append(lines, addOpens1)
 	}
@@ -220,8 +433,37 @@ func editVmoptionsFile(path string) error {
 		lines = append(lines, agentLine)
 	}
 
-	log.Printf("📄 Edit vmoptions: %s", path)
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0644)
+	// 在原文件所在目录创建临时文件
+	dir := filepath.Dir(path)
+	tempFile, err := os.CreateTemp(dir, "*.vmoptions.tmp")
+	if err != nil {
+		return err
+	}
+	tempPath := tempFile.Name()
+
+	// 写入所有行（原内容 + 追加内容）
+	if _, err := tempFile.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
+		tempFile.Close()
+		os.Remove(tempPath)
+		return err
+	}
+
+	// 关闭临时文件
+	if err := tempFile.Close(); err != nil {
+		os.Remove(tempPath)
+		return err
+	}
+
+	// 原子替换原文件
+
+	if err := os.Rename(tempPath, path); err != nil {
+		os.Remove(tempPath)
+		return err
+	}
+
+	log.Printf("📄 Updated vmoptions atomically: %s", path)
+	return nil
+
 }
 
 func revertVmoptionsFile(path string) error {
@@ -269,77 +511,4 @@ func revertVmoptionsFile(path string) error {
 	}
 	log.Printf("📄 Remove the hack in the vmoptions file: %s", path)
 	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0644)
-}
-
-func GetCrackStatus(appPrefix string) string {
-	app := appPrefix
-	if app == "IntelliJIdea" {
-		app = "IntelliJ IDEA"
-	}
-
-	path := setUserConfigPath()
-	dirs, err := os.ReadDir(path)
-	if err != nil {
-		log.Printf("❌ Failed to read directory: %v\n", err)
-		return "error"
-	}
-
-	cracked := true
-	found := false
-
-	for _, dir := range dirs {
-		if !dir.IsDir() {
-			continue
-		}
-
-		if !strings.HasPrefix(dir.Name(), appPrefix) {
-			continue
-		}
-		found = true
-
-		dirPath := filepath.Join(path, dir.Name())
-		pattern := "*.vmoptions"
-		files, _ := filepath.Glob(filepath.Join(dirPath, pattern))
-
-		for _, file := range files {
-			data, err := os.ReadFile(file)
-			if err != nil {
-				cracked = false
-				continue
-			}
-			content := string(data)
-			lines := strings.Split(content, "\n")
-			hasAddOpens1 := false
-			hasAddOpens2 := false
-			hasAgentLine := false
-			for _, line := range lines {
-				trim := strings.TrimSpace(line)
-				if trim == addOpens1 {
-					hasAddOpens1 = true
-				}
-				if trim == addOpens2 {
-					hasAddOpens2 = true
-				}
-				if trim == agentLine {
-					hasAgentLine = true
-				}
-			}
-			if !(hasAddOpens1 && hasAddOpens2 && hasAgentLine) {
-				cracked = false
-				log.Printf("🔒 %s Current Status: UnCracked 📄 %s\n", app, file)
-			} else {
-				log.Printf("🎉 %s Current Status: Cracked 📄 %s\n", app, file)
-
-			}
-		}
-	}
-
-	if !found {
-		fmt.Printf("ℹ️  %s: Uninstall \n", app)
-		return "Uninstall"
-	}
-	if cracked {
-		return "Cracked"
-	}
-	return "UnCracked"
 }

@@ -82,6 +82,13 @@ window.submitLicenseInfo = function () {
     document.getElementById("mask").style.display = "none";
     document.getElementById("form").style.display = "none";
 };
+function closecheckenv() {
+    const container = document.querySelector('.checkenv-container');
+    const backdrop = document.querySelector('.checkenv-backdrop');
+    if (container) container.style.display = 'none';
+    if (backdrop) backdrop.style.display = 'none';
+}
+
 window.showLicenseForm = function () {
     let licenseInfo = localStorage.getItem("licenseInfo");
     if (licenseInfo !== null) {

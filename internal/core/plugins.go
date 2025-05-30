@@ -20,11 +20,11 @@ const (
 
 var (
 	binDir         = util.GetBinDir()
-	certPath       = filepath.Join(binDir, "jetbra.pem")
-	keyPath        = filepath.Join(binDir, "jetbra.key")
-	powerPath      = filepath.Join(binDir, "power.txt")
-	jaNetfilter    = filepath.Join(binDir, "static", "ja-netfilter", "ja-netfilter.jar")
-	pluginJsonFile = filepath.Join(binDir, "plugins.json")
+	certPath       = filepath.Join(binDir, ".jetbra-free", "jetbra.pem")
+	keyPath        = filepath.Join(binDir, ".jetbra-free", "jetbra.key")
+	powerPath      = filepath.Join(binDir, ".jetbra-free", "power.txt")
+	jaNetfilter    = filepath.Join(binDir, ".jetbra-free", "static", "ja-netfilter", "ja-netfilter.jar")
+	pluginJsonFile = filepath.Join(binDir, ".jetbra-free", "plugins.json")
 	client         = http.Client{Timeout: 60 * time.Second}
 	AllPluginList  []*Plugin
 )
@@ -93,16 +93,35 @@ func loadAllPlugin() {
 		pluginIdCodeMap[plugin.Id] = plugin.Code
 	}
 
+	var listPluginResponse ListPluginResponse
 	pluginList, err := client.Get(pluginBaseUrl + "/api/searchPlugins?max=10000&offset=0")
 	if err != nil {
-		panic(err)
-	}
-	defer pluginList.Body.Close()
-
-	var listPluginResponse ListPluginResponse
-	err = json.NewDecoder(pluginList.Body).Decode(&listPluginResponse)
-	if err != nil {
-		panic(err)
+		log.Printf("Failed to fetch plugin list from remote: %v", err)
+		log.Printf("Trying to load plugin list from cache...")
+		cacheFile := filepath.Join(binDir, ".jetbra-free", "cache", "searchPlugins.json")
+		cachedData, err := os.ReadFile(cacheFile)
+		if err != nil {
+			log.Printf("Failed to read cache file: %v", err)
+			return
+		}
+		err = json.Unmarshal(cachedData, &listPluginResponse)
+		if err != nil {
+			log.Printf("Failed to parse cache data: %v", err)
+			return
+		}
+		log.Printf("Loaded plugin list from cache.")
+	} else {
+		defer pluginList.Body.Close()
+		err = json.NewDecoder(pluginList.Body).Decode(&listPluginResponse)
+		if err != nil {
+			log.Printf("Failed to decode plugin list response: %v", err)
+			return
+		}
+		cacheDir := filepath.Join(binDir, ".jetbra-free", "cache")
+		os.MkdirAll(cacheDir, 0755)
+		cacheFile := filepath.Join(cacheDir, "searchPlugins.json")
+		cacheData, _ := json.Marshal(listPluginResponse)
+		os.WriteFile(cacheFile, cacheData, 0644)
 	}
 
 	for i, plugin := range listPluginResponse.Plugins {
@@ -112,7 +131,9 @@ func loadAllPlugin() {
 		if pluginIdCodeMap[plugin.Id] != "" {
 			continue
 		}
-		fmt.Println("found new plugin ", plugin.Name, plugin.PricingModel)
+		if os.Getenv("DEBUG") != "" {
+			fmt.Println("found new plugin ", plugin.Name, "|", plugin.PricingModel)
+		}
 		if plugin.Icon == "" || plugin.Icon == "https://plugins.jetbrains.com" {
 			listPluginResponse.Plugins[i].Icon = path.Join("static", "icons", "Plugin_icon.svg")
 		} else {
@@ -150,7 +171,7 @@ func loadAllPlugin() {
 			go func(i int, id int, name string) {
 				defer wg.Done()
 				code := getCodeByPluginID(id)
-				fmt.Println("new plugin code ", name, code)
+				fmt.Println("new plugin code ", name, "|", code)
 				codeChan <- struct {
 					idx  int
 					code string
@@ -170,18 +191,36 @@ func loadAllPlugin() {
 }
 
 func getCodeByPluginID(id int) string {
-	pluginDetailResp, err := client.Get(pluginBaseUrl + "/api/plugins/" + strconv.Itoa(id))
-	if err != nil {
-		panic(err)
-	}
-	defer pluginDetailResp.Body.Close()
 
 	var pluginDetail PluginDetail
-	err = json.NewDecoder(pluginDetailResp.Body).Decode(&pluginDetail)
+	cacheDir := filepath.Join(binDir, ".jetbra-free", "cache", "plugins")
+	os.MkdirAll(cacheDir, 0755)
+	cacheFile := filepath.Join(cacheDir, fmt.Sprintf("%d.json", id))
+	pluginDetailResp, err := client.Get(pluginBaseUrl + "/api/plugins/" + strconv.Itoa(id))
 	if err != nil {
-		panic(err)
-	}
+		log.Printf("Failed to fetch plugin code from remote: %v", err)
+		log.Printf("Trying to load plugin detail from cache...")
 
+		cachedData, err := os.ReadFile(cacheFile)
+		if err != nil {
+			log.Printf("Failed to read cache file: %v", err)
+			return ""
+		}
+		err = json.Unmarshal(cachedData, &pluginDetail)
+		if err != nil {
+			log.Printf("Failed to parse cache data: %v", err)
+			return ""
+		}
+	} else {
+		defer pluginDetailResp.Body.Close()
+		err = json.NewDecoder(pluginDetailResp.Body).Decode(&pluginDetail)
+		if err != nil {
+			log.Printf("Failed to parse plugin detail for ID %d: %v", id, err)
+			return ""
+		}
+		cacheData, _ := json.Marshal(pluginDetail)
+		os.WriteFile(cacheFile, cacheData, 0644)
+	}
 	return pluginDetail.PurchaseInfo.ProductCode
 }
 
