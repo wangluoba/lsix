@@ -32,16 +32,13 @@ func setUserDataPath() string {
 	}
 }
 
-func getDefaultVmoptionsFilename(app string, osName string) string {
-	appNorm := strings.ToLower(app)
-	if appNorm == "intellij idea" {
-		appNorm = "idea"
-	}
+func getDefaultVmoptionsFilename(appNormName string, osName string) string {
+	app := strings.ToLower(appNormName)
 	switch osName {
 	case "windows":
-		return appNorm + "64.exe.vmoptions"
+		return app + "64.exe.vmoptions"
 	default:
-		return appNorm + ".vmoptions"
+		return app + ".vmoptions"
 	}
 }
 
@@ -59,15 +56,12 @@ func GetCrackStatus(app string) string {
 	if err != nil {
 		log.Printf("❌ Failed to read directory: %v", err)
 	}
-	envKey := strings.ToUpper(app) + "_VM_OPTIONS"
-	if envKey == "IntelliJ IDEA_VM_OPTIONS" {
-		envKey = "IDEA_VM_OPTIONS"
-	}
+	envKey := strings.ToUpper(appNormName(app)) + "_VM_OPTIONS"
 
 	cracked := true
 	found := false
 
-	// 遍历配置目录，收集所有版本目录下的 *.vmoptions 文件
+	//Traversal of the configuration directory and collect *.vmoptions files in all version directories
 	for _, dir := range jetBrainsPathDirs {
 		if !dir.IsDir() {
 			continue
@@ -80,7 +74,7 @@ func GetCrackStatus(app string) string {
 		appPath := filepath.Join(jetBrainsPath, dir.Name())
 		foundFiles, _ := filepath.Glob(filepath.Join(appPath, "*.vmoptions"))
 
-		// 如果没有找到任何 vmoptions 文件，则标记为未破解
+		//If no vmoptions files are found, they are marked as uncracked
 		if len(foundFiles) == 0 {
 			cracked = false
 			log.Printf("🔒 %s: UnCracked (no vmoptions found) 📂 %s\n", app, appPath)
@@ -101,7 +95,7 @@ func GetCrackStatus(app string) string {
 			}
 		}
 	}
-	// 遍历发现的不同版本号目录下的*.vmoptions
+	// check vmoptionfiles
 	for _, file := range vmoptionsFiles {
 		data, err := os.ReadFile(file)
 		if err != nil {
@@ -150,10 +144,7 @@ func getVmoptionsFiles(app string) []string {
 	if err != nil {
 		log.Printf("❌ Failed to read directory: %v", err)
 	}
-	envKey := strings.ToUpper(app) + "_VM_OPTIONS"
-	if envKey == "IntelliJ IDEA_VM_OPTIONS" {
-		envKey = "IDEA_VM_OPTIONS"
-	}
+	envKey := strings.ToUpper(appNormName(app)) + "_VM_OPTIONS"
 	envPath := os.Getenv(envKey)
 	if envPath != "" {
 		if os.Getenv("DEBUG") == "1" {
@@ -173,8 +164,8 @@ func getVmoptionsFiles(app string) []string {
 		appPath := filepath.Join(jetBrainsPath, dir.Name())
 		foundFiles, _ := filepath.Glob(filepath.Join(appPath, "*.vmoptions"))
 		if len(foundFiles) == 0 {
-			defaultFilePath := filepath.Join(appPath, getDefaultVmoptionsFilename(app, runtime.GOOS))
-			log.Printf("📂 No .vmoptions files found in path:%s. Create vmoptions file path: %s", appPath, defaultFilePath)
+			defaultFilePath := filepath.Join(appPath, getDefaultVmoptionsFilename(appNormName(app), runtime.GOOS))
+			log.Printf("📂 No .vmoptions file found. 📄 Create vmoptions file path: %s", defaultFilePath)
 			err := os.WriteFile(defaultFilePath, []byte(""), 0644)
 			if err != nil {
 				log.Printf("❌ Failed to create default vmoptions file: %v", err)
@@ -204,10 +195,6 @@ func getVmoptionsFiles(app string) []string {
 func getKeyFiles(app string) []string {
 
 	var keyFiles []string
-	envKey := strings.ToUpper(app) + "_VM_OPTIONS"
-	if envKey == "IntelliJ IDEA_VM_OPTIONS" {
-		envKey = "IDEA_VM_OPTIONS"
-	}
 	jetBrainsPath := setUserDataPath()
 	jetBrainsPathDirs, err := os.ReadDir(jetBrainsPath)
 	if err != nil {
@@ -222,7 +209,7 @@ func getKeyFiles(app string) []string {
 			continue
 		}
 		appPath := filepath.Join(jetBrainsPath, dir.Name())
-		// keyfile
+		// keyFile
 		keyFile := filepath.Join(appPath, strings.ToLower(appNormName(app))+".key")
 		keyFiles = append(keyFiles, keyFile)
 	}
@@ -241,7 +228,7 @@ func appPathPrefixName(app string) string {
 func appNormName(app string) string {
 	appNormName := app
 	if appNormName == "IntelliJ IDEA" {
-		appNormName = "idea"
+		appNormName = "IDEA"
 	}
 	return appNormName
 }
@@ -283,7 +270,7 @@ func CrackHandler(c *gin.Context) {
 					fmt.Printf("Failed to patch %s: %v\n", file, err)
 				}
 			}
-			// 备份keyfile
+			// Backup Key
 			for _, file := range keyFiles {
 				keyBackupPath := file + ".jetbra-free.bak"
 				data, err := os.ReadFile(file)
@@ -294,7 +281,7 @@ func CrackHandler(c *gin.Context) {
 			}
 			backup = true
 		}
-		// 设置key
+		// setKeyFile
 		licenseStr, _ := GenerateLicense(&req.License)
 		for _, file := range keyFiles {
 			if err := setKeyFile(file, licenseStr); err != nil {
@@ -350,7 +337,7 @@ func setKeyFile(keyPath string, licenseStr string) error {
 	}
 	tmpPath := tmpFile.Name()
 
-	// 写入内容
+	// Write content
 	if _, err := tmpFile.Write([]byte(utf16Content)); err != nil {
 		tmpFile.Close()
 		os.Remove(tmpPath)
@@ -360,7 +347,7 @@ func setKeyFile(keyPath string, licenseStr string) error {
 
 	log.Printf("🔑 Replacing key file atomically: %s", keyPath)
 
-	// 原子性替换
+	// 原Sub-sex replacement
 	if err := os.Rename(tmpPath, keyPath); err != nil {
 		os.Remove(tmpPath)
 		return err
@@ -420,7 +407,7 @@ func editVmoptionsFile(path string) error {
 		return err
 	}
 
-	// ⚠️ 提前关闭 file，否则 Windows 下 rename 会失败
+	// Close the file in advance, otherwise rename will fail under Windows
 	file.Close()
 
 	if !hasAddOpens1 {
@@ -433,7 +420,6 @@ func editVmoptionsFile(path string) error {
 		lines = append(lines, agentLine)
 	}
 
-	// 在原文件所在目录创建临时文件
 	dir := filepath.Dir(path)
 	tempFile, err := os.CreateTemp(dir, "*.vmoptions.tmp")
 	if err != nil {
@@ -441,21 +427,20 @@ func editVmoptionsFile(path string) error {
 	}
 	tempPath := tempFile.Name()
 
-	// 写入所有行（原内容 + 追加内容）
+	//Write all lines (original content + append content)
 	if _, err := tempFile.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
 		tempFile.Close()
 		os.Remove(tempPath)
 		return err
 	}
 
-	// 关闭临时文件
+	//Close temporary files
 	if err := tempFile.Close(); err != nil {
 		os.Remove(tempPath)
 		return err
 	}
 
-	// 原子替换原文件
-
+	//Atomic replacement of the original file
 	if err := os.Rename(tempPath, path); err != nil {
 		os.Remove(tempPath)
 		return err
