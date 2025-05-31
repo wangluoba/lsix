@@ -8,6 +8,7 @@
 - Click the plugin or ide cards to copy the activation key to the clipboard, and you can manually enter the key for activation
 - It also supports one-click removal of activation configuration
 - It is single bin file, after execution, the relevant files for activation will be released in the current directory. After activation, the ide will reference the directory and do not delete it.
+- warning: Some plugins have built-in time detection mechanisms. Setting an expiration time too long may cause the license to be marked as an exception. Consider adjusting the expiration date of these plugins to two years from today
 
 ## dev
 
@@ -17,7 +18,7 @@ install go-bindata
 go install github.com/go-bindata/go-bindata/v3/go-bindata@latest
 export PATH=$PATH:$(go env GOPATH)/bin
 go-bindata --version
-go-bindata -o internal/util/access.go -pkg util static/... templates/...  cache/...
+go-bindata -o internal/util/access.go -pkg util static/... templates/... cache/...
 go run cmd/main.go
 ```
 
