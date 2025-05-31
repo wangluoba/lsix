@@ -1,6 +1,22 @@
 <img src="image.gif">
 
-## introduce
+## **Overview**:
+A single-file tool that activates JetBrains IDEs with one click — no manual activation code input required.
+
+### ✅ Features:
+- Supports activation of **paid plugins**, such as **Rainbow Brackets**
+- Automatically **backs up and restores** the original state before patching
+- **Cross-platform**: compatible with macOS, Linux, and Windows
+
+### 🔧 v3.1 Fixes & Improvements:
+- Improved compatibility with **residual configurations** left by other activation scripts (e.g., environment variables and incorrect permission handling)
+- Added **parallel plugin request support** to speed up startup
+- Introduced **plugin caching**, allowing usage even when offline or under poor network conditions
+- Changed the **file extraction path** to avoid polluting the current working directory
+- Added support for the **`plugin-privacy`** plugin
+- Supports activating plugins like **Rainbow Brackets** (some plugins have built-in time-based license checks — to avoid being flagged as abnormal, it's recommended to set the expiration date to **2 years from today** rather than an excessively long period)
+
+## How 2 Use
 
 **Only once click, automatically activated**
 
