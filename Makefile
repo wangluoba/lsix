@@ -13,7 +13,7 @@ build: bindata-access
 run: build
 	./bin/$(BINARY_NAME)
 
-build-all: build-mac build-mac-arm build-windows build-linux
+build-all: build-mac build-mac-arm build-windows build-win7 build-linux
 
 build-mac: bindata-access
 	GOOS=darwin GOARCH=amd64 go build -o $(BIN_DIR)/$(BINARY_NAME)-darwin-amd64 cmd/main.go
@@ -23,6 +23,9 @@ build-mac-arm: bindata-access
 
 build-windows: bindata-access
 	GOOS=windows GOARCH=amd64 go build -o $(BIN_DIR)/$(BINARY_NAME)-windows-amd64.exe cmd/main.go
+
+build-win7: bindata-access
+	GOOS=windows GOARCH=amd64 go build -ldflags="-extldflags=-subsystem=console,6.1" -o $(BIN_DIR)/$(BINARY_NAME)-windows7-amd64.exe cmd/main.go
 
 build-linux: bindata-access
 	GOOS=linux GOARCH=amd64 go build -o $(BIN_DIR)/$(BINARY_NAME)-linux-amd64 cmd/main.go
