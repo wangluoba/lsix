@@ -25,6 +25,9 @@ A single-file tool that activates JetBrains IDEs with one click — no manual ac
 - It also supports one-click removal of activation configuration
 - It is single bin file, after execution, the relevant files for activation will be released in the current directory. After activation, the ide will reference the directory and do not delete it.
 - warning: Some plugins have built-in time detection mechanisms. Setting an expiration time too long may cause the license to be marked as an exception. Consider adjusting the expiration date of these plugins to two years from today
+-  warning: If the environment variable ends with _VM_OPTIONS when activated by other activation methods, please refer to the prompts to remove it
+-  warning: The software installed with scoop cannot be activated, and the message "crack failed uninstall" is displayed. You need to manually create the %appdata%\JetBrains\IntelliJIdea2025.1 folder, and then you can successfully activate it. The same is true for other operating systems. Please read the software prompts for the directory.
+
 
 ## dev
 
