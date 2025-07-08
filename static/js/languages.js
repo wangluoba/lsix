@@ -44,7 +44,7 @@ const translations = {
     }
 };
 
-let currentLang = 'en';
+let currentLang = 'zh';
 
 function toggleLanguage() {
     currentLang = currentLang === 'zh' ? 'en' : 'zh';
